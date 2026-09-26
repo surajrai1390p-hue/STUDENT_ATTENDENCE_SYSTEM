@@ -1,3 +1,16 @@
+/**
+ * ============================================================
+ *  TEACHERS.JSX — Create / delete teacher logins (admin only)
+ * ============================================================
+ *  This page exists because teachers need accounts to log in.
+ *  The form POSTs { name, email, password } → the backend
+ *  bcrypt-hashes the password before storing it.
+ *
+ *  Route is double-protected:
+ *    1. Client: <Guard roles={['admin']}> in App.jsx
+ *    2. Server: router.use(requireRole('admin')) in routes/teachers.js
+ * ============================================================
+ */
 import { useEffect, useState } from 'react';
 import api, { errMsg } from '../api';
 import { useToast } from '../ToastContext';

@@ -1,3 +1,18 @@
+/**
+ * ============================================================
+ *  STUDENTS.JSX — Student list + add/delete (admin)
+ * ============================================================
+ *  Features:
+ *   - Client-side SEARCH: the API returns everyone once, then
+ *     .filter() narrows the list as you type (no extra requests)
+ *   - Add form visible only to admin (role check → user.role)
+ *   - Delete opens a ConfirmModal (prevents accidental deletes)
+ *   - Skeleton rows while the list loads
+ *
+ *  State pattern used on every CRUD page in this project:
+ *   list + loading + form fields + error, with a shared load().
+ * ============================================================
+ */
 import { useEffect, useState } from 'react';
 import api, { errMsg } from '../api';
 import { useAuth } from '../AuthContext';
@@ -21,6 +36,7 @@ export default function Students() {
   const [formErr, setFormErr] = useState('');
   const [toDelete, setToDelete] = useState(null);
 
+  // Fetch the full list — called on mount and after every add/delete
   const load = async () => {
     setLoading(true);
     try {
@@ -36,6 +52,7 @@ export default function Students() {
     load();
   }, []);
 
+  // POST /api/students — form submit (admin only, enforced by API too)
   const add = async (e) => {
     e.preventDefault();
     setFormErr('');
@@ -55,6 +72,7 @@ export default function Students() {
     }
   };
 
+  // DELETE /api/students/:id — runs only after ConfirmModal confirmation
   const remove = async () => {
     try {
       await api.delete(`/students/${toDelete.id}`);

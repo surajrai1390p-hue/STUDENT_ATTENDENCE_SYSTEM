@@ -1,8 +1,27 @@
+/**
+ * ============================================================
+ *  REPORTS.JSX — Percentages + defaulters list
+ * ============================================================
+ *  Only ONE API call:
+ *    GET /attendance/report → every student: total / present / %
+ *
+ *  The defaulters list is NOT a separate request — we simply
+ *  filter the same data in JavaScript:
+ *      rows.filter(r => r.pct < 75)
+ *
+ *  Other features:
+ *    - Summary cards: students counted, average, defaulter count
+ *    - Progress bar per row (green ≥75%, red <75%)
+ *    - "Export CSV" builds the file in the BROWSER (Blob)
+ *    - Report auto-runs when the subject changes
+ * ============================================================
+ */
 import { useEffect, useState } from 'react';
 import api, { errMsg } from '../api';
 import { useToast } from '../ToastContext';
 import { EmptyIcon, TableIcon } from '../components/Icons';
 
+// Default filter = current month (from 1st to last day)
 const monthStart = () => {
   const d = new Date();
   d.setDate(1);
@@ -20,7 +39,6 @@ export default function Reports() {
   const [from, setFrom] = useState(monthStart());
   const [to, setTo] = useState(monthEnd());
   const [rows, setRows] = useState([]);
-  const [def, setDef] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
@@ -38,17 +56,15 @@ export default function Reports() {
     if (sid) load();
   }, [sid]);
 
+  // Fetch the report once, then derive everything else from it
   const load = async () => {
     if (!sid || !from || !to) return;
     setLoading(true);
     try {
-      const params = { subject_id: sid, from, to };
-      const [rep, defRes] = await Promise.all([
-        api.get('/attendance/report', { params }),
-        api.get('/attendance/defaulters', { params: { ...params, below: 75 } })
-      ]);
-      setRows(rep.data);
-      setDef(defRes.data);
+      const res = await api.get('/attendance/report', {
+        params: { subject_id: sid, from, to }
+      });
+      setRows(res.data);
       setLoaded(true);
     } catch (e) {
       toast.error(errMsg(e, 'Failed to load report'));
@@ -73,11 +89,21 @@ export default function Reports() {
     toast.success('Report exported as CSV');
   };
 
+  // ---------- Everything below is derived from `rows` ----------
   const withData = rows.filter((r) => r.total > 0);
-  const avg =
-    withData.length > 0
-      ? Math.round(withData.reduce((sum, r) => sum + Number(r.pct || 0), 0) / withData.length)
-      : null;
+
+  // Defaulters = same data, filtered (below 75%)
+  const def = rows
+    .filter((r) => r.pct !== null && Number(r.pct) < 75)
+    .sort((a, b) => a.pct - b.pct); // worst first
+
+  // Average of all student percentages
+  let avg = null;
+  if (withData.length > 0) {
+    const sum = withData.reduce((total, r) => total + Number(r.pct || 0), 0);
+    avg = Math.round(sum / withData.length);
+  }
+
   const subject = subjects.find((s) => String(s.id) === String(sid));
 
   return (

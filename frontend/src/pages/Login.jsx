@@ -1,3 +1,18 @@
+/**
+ * ============================================================
+ *  LOGIN.JSX — Authentication screen
+ * ============================================================
+ *  Flow demonstrated here:
+ *   1. User submits email + password
+ *   2. POST /api/auth/login → server verifies bcrypt hash
+ *   3. Server responds with { token, user }
+ *   4. login(token, user) stores both in AuthContext/localStorage
+ *   5. useNavigate('/') sends the user to the dashboard
+ *
+ *  Demo credentials: click a card below the form to auto-fill —
+ *  handy during the presentation.
+ * ============================================================
+ */
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api, { errMsg } from '../api';
@@ -18,17 +33,18 @@ export default function Login() {
   const { login } = useAuth();
   const toast = useToast();
 
+  // Called on form submit — prevents the default page reload
   const submit = async (e) => {
     e.preventDefault();
     setErr('');
     setBusy(true);
     try {
       const { data } = await api.post('/auth/login', { email, password });
-      login(data.token, data.user);
+      login(data.token, data.user); // save session (AuthContext)
       toast.success('Logged in');
-      nav('/');
+      nav('/'); // redirect to dashboard
     } catch (e2) {
-      setErr(errMsg(e2, 'Invalid email or password'));
+      setErr(errMsg(e2, 'Invalid email or password')); // 401 message from API
     } finally {
       setBusy(false);
     }

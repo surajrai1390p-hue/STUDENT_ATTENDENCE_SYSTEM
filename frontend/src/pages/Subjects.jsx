@@ -1,3 +1,16 @@
+/**
+ * ============================================================
+ *  SUBJECTS.JSX — Subject list + create/delete (admin)
+ * ============================================================
+ *  Data loading: students of the "assigned teacher" dropdown
+ *  needs the teacher list, so we fetch BOTH in parallel:
+ *      Promise.all([api.get('/subjects'), api.get('/teachers')])
+ *  Teachers only get the subjects call (they don't manage teachers).
+ *
+ *  DELETE /api/subjects/:id → attendance rows are removed by the
+ *  DB automatically (ON DELETE CASCADE in the schema).
+ * ============================================================
+ */
 import { useEffect, useState } from 'react';
 import api, { errMsg } from '../api';
 import { useAuth } from '../AuthContext';

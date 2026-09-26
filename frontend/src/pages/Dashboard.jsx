@@ -1,4 +1,21 @@
-import { useEffect, useRef, useState } from 'react';
+/**
+ * ============================================================
+ *  DASHBOARD.JSX — Landing page after login
+ * ============================================================
+ *  Loads FOUR things for this page:
+ *    GET /api/stats            → 4 counter cards
+ *    GET /api/stats/trend      → line chart (last 14 days)
+ *    GET /api/stats/classes    → bar chart (class-wise %)
+ *    GET /api/attendance/recent → "Recently marked" list
+ *
+ *  Simple approach:
+ *   - all four requests fire together with Promise.all
+ *   - stat numbers are plain values (no animation code)
+ *   - Recharts only receives data + a few labels
+ *   - skeleton placeholders show while loading
+ * ============================================================
+ */
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ResponsiveContainer,
@@ -15,41 +32,17 @@ import {
 import api, { errMsg } from '../api';
 import { useAuth } from '../AuthContext';
 
-function useCountUp(target, duration = 700) {
-  const [value, setValue] = useState(0);
-  const frame = useRef();
-  useEffect(() => {
-    if (target === null || target === undefined || Number.isNaN(Number(target))) {
-      setValue(0);
-      return;
-    }
-    const end = Number(target);
-    const start = performance.now();
-    const tick = (now) => {
-      const t = Math.min((now - start) / duration, 1);
-      const eased = 1 - Math.pow(1 - t, 3);
-      setValue(Math.round(end * eased));
-      if (t < 1) frame.current = requestAnimationFrame(tick);
-    };
-    frame.current = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame.current);
-  }, [target, duration]);
-  return value;
-}
-
-function Stat({ value, suffix = '', label, numeric = true, tone }) {
-  const hasNumber = numeric && value !== null && value !== undefined && !Number.isNaN(Number(value));
-  const counted = useCountUp(hasNumber ? Number(value) : null);
+// One small presentational component = one stat card
+function Stat({ value, label, tone }) {
   return (
     <div className="stat-card">
-      <div className={`stat-value ${tone || ''}`}>
-        {value === null || value === undefined ? '—' : hasNumber ? `${counted}${suffix}` : value}
-      </div>
+      <div className={`stat-value ${tone || ''}`}>{value ?? '—'}</div>
       <div className="stat-label">{label}</div>
     </div>
   );
 }
 
+// Custom tooltip so chart popups match the app style
 function ChartTooltip({ active, payload, label, unit = '' }) {
   if (!active || !payload?.length) return null;
   return (
@@ -72,21 +65,29 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // Load all dashboard data in one go
   useEffect(() => {
     (async () => {
       try {
+        // Promise.all = send all 4 requests at the same time
         const [s, r, t, c] = await Promise.all([
           api.get('/stats'),
           api.get('/attendance/recent'),
-          api.get('/stats/trend', { params: { days: 14 } }).catch(() => ({ data: [] })),
-          api.get('/stats/classes', { params: { days: 30 } }).catch(() => ({ data: [] }))
+          api.get('/stats/trend', { params: { days: 14 } }),
+          api.get('/stats/classes', { params: { days: 30 } })
         ]);
+
         setStats(s.data);
         setRecent(r.data);
+
+        // Convert ISO date (2026-09-08) → "08 Sep" for the x-axis
         setTrend(
           t.data.map((row) => ({
             ...row,
-            day: new Date(row.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
+            day: new Date(row.date).toLocaleDateString('en-GB', {
+              day: '2-digit',
+              month: 'short'
+            })
           }))
         );
         setClasses(c.data);
@@ -98,11 +99,13 @@ export default function Dashboard() {
     })();
   }, []);
 
-  const todayPct =
-    stats && stats.today_total > 0
-      ? Math.round((stats.today_present / stats.today_total) * 100)
-      : null;
+  // Today's % — simple arithmetic (e.g. 18/24 → 75%)
+  let todayPct = null;
+  if (stats && stats.today_total > 0) {
+    todayPct = Math.round((stats.today_present / stats.today_total) * 100);
+  }
 
+  // ---------- Loading state: gray skeleton boxes ----------
   if (loading) {
     return (
       <div className="page">
@@ -141,18 +144,19 @@ export default function Dashboard() {
 
       {error && <div className="alert alert-error">{error}</div>}
 
+      {/* ---------- Four counter cards ---------- */}
       <div className="stats-grid">
         <Stat value={stats?.students} label="Total Students" />
         <Stat value={stats?.subjects} label="Subjects" />
         <Stat value={stats?.teachers} label="Teachers" />
         <Stat
-          value={todayPct !== null ? todayPct : null}
-          suffix="%"
+          value={todayPct !== null ? `${todayPct}%` : null}
           label="Today's Attendance"
           tone={todayPct !== null && todayPct < 75 ? 'stat-low' : 'stat-ok'}
         />
       </div>
 
+      {/* ---------- Two charts side by side ---------- */}
       <div className="grid-charts">
         <div className="card chart-card">
           <div className="card-title">Attendance trend</div>
@@ -224,8 +228,12 @@ export default function Dashboard() {
                     axisLine={false}
                     width={44}
                   />
-                  <Tooltip content={<ChartTooltip unit="%" />} cursor={{ fill: 'rgba(79,70,229,0.06)' }} />
+                  <Tooltip
+                    content={<ChartTooltip unit="%" />}
+                    cursor={{ fill: 'rgba(79,70,229,0.06)' }}
+                  />
                   <Bar dataKey="pct" name="Avg attendance" radius={[6, 6, 0, 0]} barSize={36}>
+                    {/* Green bar if ≥75%, red if below */}
                     {classes.map((c, i) => (
                       <Cell key={i} fill={(c.pct || 0) >= 75 ? '#059669' : '#dc2626'} />
                     ))}
@@ -238,6 +246,7 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* ---------- Quick actions + today summary ---------- */}
       <div className="grid-2">
         <div className="card">
           <div className="card-title">Quick actions</div>

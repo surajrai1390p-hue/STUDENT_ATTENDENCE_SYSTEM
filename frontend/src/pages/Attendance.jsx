@@ -1,3 +1,20 @@
+/**
+ * ============================================================
+ *  ATTENDANCE.JSX — Core screen: teachers mark daily P/A
+ * ============================================================
+ *  How it works:
+ *   1. Subject + date selected → useEffect auto-loads the class list
+ *   2. GET /students  → full class list
+ *   3. GET /attendance?subject_id=&date= → already-saved marks (if any)
+ *   4. Frontend MERGES both: saved status wins, default = "Present"
+ *   5. Teacher toggles P/A per student (or "Mark all")
+ *   6. POST /attendance/mark → one transaction saves the whole sheet
+ *
+ *  Why auto-load on subject/date change?
+ *  The effect depends on [subjectId, date] — switching either
+ *  one refetches, so the teacher can never see a stale list.
+ * ============================================================
+ */
 import { useEffect, useState } from 'react';
 import api, { errMsg } from '../api';
 import { useToast } from '../ToastContext';
@@ -25,10 +42,14 @@ export default function Attendance() {
       .catch((e) => toast.error(errMsg(e, 'Failed to load subjects')));
   }, []);
 
+  // Whenever subject OR date changes → reload the student list
   useEffect(() => {
     if (subjectId) load();
   }, [subjectId, date]);
 
+  // Merges /students with /attendance for the chosen date
+  // Build a lookup {student_id: status} from saved records,
+  // then default any student not yet marked today to "Present"
   const load = async () => {
     if (!subjectId) return;
     setLoading(true);
@@ -50,11 +71,14 @@ export default function Attendance() {
     }
   };
 
+  // Toggle a single student's status (immutable state update)
   const setStatus = (id, status) =>
     setRows((r) => r.map((x) => (x.id === id ? { ...x, status } : x)));
 
+  // Bulk action: set every row to Present or Absent
   const markAll = (status) => setRows((r) => r.map((x) => ({ ...x, status })));
 
+  // Send the whole sheet — backend wraps it in a DB transaction
   const save = async () => {
     if (!rows.length) return;
     setSaving(true);

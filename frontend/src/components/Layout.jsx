@@ -1,7 +1,23 @@
+/**
+ * ============================================================
+ *  LAYOUT.JSX — Shared app shell (sidebar + topbar + page area)
+ * ============================================================
+ *  Structure:   /login  → full-screen, no Layout
+ *               other   → Guard → Layout → <Outlet/> renders the page
+ *
+ *  NavLink renders an <a> and automatically adds class "active"
+ *  to the current route — that's how the sidebar highlights.
+ *
+ *  Role-based menu: the NAV array stores which roles may see an
+ *  item (e.g. Teachers is admin-only). Note this only HIDES the
+ *  link — real protection is on the API (requireRole).
+ * ============================================================
+ */
 import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 
+// Sidebar menu definition — `roles` = who can see the item (no roles = everyone)
 const NAV = [
   { section: 'Overview' },
   { to: '/', label: 'Dashboard', end: true },
@@ -17,8 +33,9 @@ const NAV = [
 export default function Layout() {
   const { user, logout } = useAuth();
   const nav = useNavigate();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(false); // mobile sidebar toggle
 
+  // Filter menu items by the logged-in user's role
   const items = NAV.filter((n) => !n.roles || n.roles.includes(user?.role));
 
   return (
@@ -90,6 +107,7 @@ export default function Layout() {
           </div>
         </header>
 
+        {/* Rendered page goes here — React Router injects the matched route */}
         <Outlet />
       </div>
     </div>

@@ -1,3 +1,17 @@
+/**
+ * ============================================================
+ *  TOASTCONTEXT.JS — Global toast notifications
+ * ============================================================
+ *  Small feedback system: after an action the user sees a
+ *  temporary message ("Student added" / "Save failed") instead
+ *  of browser alert() boxes.
+ *
+ *  Usage anywhere:  const toast = useToast();
+ *                   toast.success('Saved');
+ *                   toast.error('Something failed');
+ *  Messages auto-dismiss after 3.2 seconds.
+ * ============================================================
+ */
 import { createContext, useContext, useState, useCallback } from 'react';
 
 const ToastCtx = createContext(null);
@@ -7,7 +21,7 @@ export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
 
   const push = useCallback((message, type = 'success') => {
-    const id = Date.now() + Math.random();
+    const id = Date.now() + Math.random(); // unique key
     setToasts((t) => [...t, { id, message, type }]);
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3200);
   }, []);
@@ -20,6 +34,7 @@ export function ToastProvider({ children }) {
   return (
     <ToastCtx.Provider value={toast}>
       {children}
+      {/* Toast stack — fixed top-right */}
       <div className="toast-container">
         {toasts.map((t) => (
           <div key={t.id} className={`toast toast-${t.type}`}>

@@ -76,7 +76,7 @@ Click a demo account on the login screen to auto-fill.
 ISA_III_PROJECT/
 ├── backend/
 │   ├── config/db.js          # MySQL connection pool
-│   ├── middleware/           # JWT auth + async error handler
+│   ├── middleware/           # JWT auth (verifyToken + requireRole)
 │   ├── routes/               # auth, students, teachers, subjects, attendance, stats
 │   ├── seed.js               # demo data
 │   └── server.js
