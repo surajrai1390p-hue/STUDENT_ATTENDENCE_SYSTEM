@@ -28,6 +28,15 @@ app.use(express.json());
 // ---------- Health check (used to verify the server is running) ----------
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 
+// ---------- Root URL: friendly message instead of a raw 404 ----------
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Attendance API is running',
+    frontend: 'http://localhost:5173',
+    endpoints: ['/api/health', '/api/auth', '/api/students', '/api/attendance', '/api/stats']
+  });
+});
+
 // ---------- Route modules (one file per feature) ----------
 app.use('/api/auth', require('./routes/auth'));             // login, current user
 app.use('/api/teachers', require('./routes/teachers'));     // teacher CRUD (admin)
